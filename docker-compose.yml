@@ -1,0 +1,22 @@
+services:
+  postgres-db:
+    image: postgres:15
+    container_name: growblic-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: DadiDadu
+      POSTGRES_DB: growblic_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - growblic_pgdata:/var/lib/postgresql/data
+    networks:
+      - growblic-network
+
+volumes:
+  growblic_pgdata:
+
+networks:
+  growblic-network:
+    driver: bridge

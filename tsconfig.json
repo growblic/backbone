@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    // 🔥 MODULE SETTINGS (NestJS stable)
+    "module": "commonjs",
+    "moduleResolution": "node",
+
+    // 🔥 LANGUAGE
+    "target": "ES2021",
+    "lib": ["ES2021"],
+
+    // 🔥 DECORATORS (NestJS)
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+
+    // 🔥 INTEROP
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    // 🔥 OUTPUT
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "removeComments": true,
+
+    // 🔥 STRICTNESS (balanced)
+    "strictNullChecks": true,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+
+    // 🔥 ALIAS (IMPORTANT)
+    "baseUrl": "./",
+    "paths": {
+      "@modules/*": ["src/modules/*"],
+      "@infra/*": ["src/infrastructure/*"],
+      "@identity/*": ["src/modules/identity/*"],
+      "@core/*": ["src/core/*"],
+      "@config/*": ["src/config/*"],
+      "@common/*": ["src/common/*"] 
+    },
+
+    // 🔥 PERFORMANCE
+    "incremental": true
+  }
+}

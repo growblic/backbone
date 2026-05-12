@@ -1,0 +1,463 @@
+// =======================
+// DATABASE CONFIG
+// =======================
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =======================
+// ENUMS
+// =======================
+
+enum TaskStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  DELETED
+}
+
+enum AdRewardStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum TaskSubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TaskType {
+  APP_RATING
+  APP_INSTALL
+  LEAD_GENERATION
+  CREDIT_CARD
+  SURVEY
+  CUSTOM
+}
+
+enum Currency {
+  INR
+}
+
+enum KycStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum WalletStatus {
+  ACTIVE
+  BLOCKED
+  SUSPENDED
+}
+
+enum WalletTransactionStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  REVERSED
+}
+
+enum WalletTransactionType {
+  TRANSFER
+  REWARD
+  WITHDRAW
+  RECHARGE
+  TASK_REWARD
+  AD_REWARD
+}
+
+enum LedgerEntryType {
+  CREDIT
+  DEBIT
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PROCESSING
+  SUCCESS
+  FAILED
+}
+
+// =======================
+// USER
+// =======================
+
+model User {
+  id String @id @default(uuid())
+
+  phone String @unique
+
+  source String?
+
+  country String?
+
+  appId String?
+
+  role String @default("USER")
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // RELATIONS
+  profile Profile?
+
+  wallet Wallet?
+
+  kyc             Kyc?
+  taskSubmissions TaskSubmission[]
+  adRewardClaims  AdRewardClaim[]
+}
+
+// =======================
+// PROFILE
+// =======================
+
+model Profile {
+  id String @id @default(uuid())
+
+  userId String @unique
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  username String? @unique
+
+  firstName String?
+
+  lastName String?
+
+  bio String?
+
+  dateOfBirth DateTime?
+
+  language String?
+
+  gender String?
+
+  timezone String?
+
+  email String?
+
+  phone String?
+
+  photoUrl String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// =======================
+// WALLET
+// =======================
+
+model Wallet {
+  id String @id @default(uuid())
+
+  userId String @unique
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  walletNumber String @unique
+
+  walletHandle String @unique
+
+  availableBalance Int @default(0)
+
+  lockedBalance Int @default(0)
+
+  currency Currency @default(INR)
+
+  status WalletStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // RELATIONS
+  sentTransactions WalletTransaction[] @relation("SenderWallet")
+
+  receivedTransactions WalletTransaction[] @relation("ReceiverWallet")
+
+  ledgerEntries LedgerEntry[]
+
+  withdrawals Withdrawal[]
+
+  @@index([userId])
+  @@index([walletHandle])
+  @@index([walletNumber])
+}
+
+// =======================
+// WALLET TRANSACTION
+// =======================
+
+model WalletTransaction {
+  id String @id @default(uuid())
+
+  referenceId String @unique
+
+  idempotencyKey String? @unique
+
+  senderWalletId String?
+
+  receiverWalletId String?
+
+  amount Int
+
+  type WalletTransactionType
+
+  status WalletTransactionStatus @default(PENDING)
+
+  note String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  senderWallet Wallet? @relation("SenderWallet", fields: [senderWalletId], references: [id])
+
+  receiverWallet Wallet? @relation("ReceiverWallet", fields: [receiverWalletId], references: [id])
+
+  ledgerEntries LedgerEntry[]
+
+  @@index([senderWalletId])
+  @@index([receiverWalletId])
+  @@index([referenceId])
+  @@index([status])
+}
+
+// =======================
+// LEDGER ENTRY
+// =======================
+
+model LedgerEntry {
+  id String @id @default(uuid())
+
+  walletId String
+
+  transactionId String
+
+  type LedgerEntryType
+
+  amount Int
+
+  balanceAfter Int
+
+  createdAt DateTime @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  transaction WalletTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([transactionId])
+}
+
+// =======================
+// WITHDRAWAL
+// =======================
+
+model Withdrawal {
+  id String @id @default(uuid())
+
+  walletId String
+
+  amount Int
+
+  bankName String?
+
+  accountNumber String?
+
+  ifscCode String?
+
+  upiId String?
+
+  status WithdrawalStatus @default(PENDING)
+
+  adminRemark String?
+
+  processedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([status])
+}
+
+model Task {
+  id String @id @default(uuid())
+
+  title String
+
+  slug String @unique
+
+  shortDescription String
+
+  description String
+
+  type TaskType
+
+  rewardAmount Int
+
+  currency String @default("INR")
+
+  status TaskStatus @default(DRAFT)
+
+  totalSlots Int?
+
+  completedSlots Int @default(0)
+
+  startsAt DateTime?
+
+  expiresAt DateTime?
+
+  metadata Json?
+
+  instructions Json?
+
+  validationRules Json?
+
+  isFeatured Boolean @default(false)
+
+  createdBy String?
+
+  updatedBy String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  submissions TaskSubmission[]
+}
+
+model TaskSubmission {
+  id String @id @default(uuid())
+
+  userId String
+
+  taskId String
+
+  status TaskSubmissionStatus @default(PENDING)
+
+  submissionData Json
+
+  adminRemark String?
+
+  reviewedBy String?
+
+  reviewedAt DateTime?
+
+  rewardTransactionId String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id])
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, taskId])
+}
+
+model AdRewardCampaign {
+  id String @id @default(uuid())
+
+  title String
+
+  description String?
+
+  rewardAmount Int
+
+  dailyLimit Int @default(10)
+
+  totalLimit Int?
+
+  adsProvider String
+
+  placementId String
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  claims AdRewardClaim[]
+
+  @@index([isActive])
+}
+
+model AdRewardClaim {
+  id String @id @default(uuid())
+
+  userId String
+
+  campaignId String
+
+  rewardAmount Int
+
+  status AdRewardStatus @default(SUCCESS)
+
+  claimedAt DateTime @default(now())
+
+  transactionId String?
+
+  campaign AdRewardCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([campaignId])
+  @@index([claimedAt])
+}
+
+// =======================
+// KYC
+// =======================
+
+model Kyc {
+  id String @id @default(uuid())
+
+  userId String @unique
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status KycStatus @default(PENDING)
+
+  aadhaar String?
+
+  pan String?
+
+  passport String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
