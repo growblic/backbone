@@ -13,7 +13,7 @@ type SessionData = {
 
   userId: string;
 
-  refreshToken: string;
+  refreshTokenHash: string;
 
   ipAddress: string;
 
@@ -26,6 +26,10 @@ type SessionData = {
   createdAt: string;
 
   expiresAt: string;
+
+  revokedAt?: string;
+
+  lastUsedAt?: string;
 };
 
 @Injectable()
@@ -35,111 +39,181 @@ export class SessionService {
     private readonly redis: Redis,
   ) {}
 
-  // 🔥 create session
+  // =====================================================
+  // 🔐 HASH TOKEN
+  // =====================================================
+
+  private hashToken(
+    token: string,
+  ): string {
+    return crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+  }
+
+  // =====================================================
+  // 🔥 CREATE SESSION
+  // =====================================================
+
   async createSession(
     userId: string,
+
     refreshToken: string,
 
     metadata?: {
       ipAddress?: string;
+
       userAgent?: string;
+
       deviceName?: string;
 
       fingerprint?: string;
     },
   ) {
-    const sessionId = crypto.randomUUID();
+    const sessionId =
+      crypto.randomUUID();
 
     const session: SessionData = {
       id: sessionId,
 
       userId,
 
-      refreshToken,
+      refreshTokenHash:
+        this.hashToken(
+          refreshToken,
+        ),
 
       ipAddress:
-        metadata?.ipAddress || 'unknown',
+        metadata?.ipAddress ||
+        'unknown',
 
       userAgent:
-        metadata?.userAgent || 'unknown',
+        metadata?.userAgent ||
+        'unknown',
 
       deviceName:
-        metadata?.deviceName || 'unknown',
+        metadata?.deviceName ||
+        'unknown',
 
       fingerprint:
-        metadata?.fingerprint || 'unknown',
+        metadata?.fingerprint ||
+        'unknown',
 
-      createdAt: new Date().toISOString(),
+      createdAt:
+        new Date().toISOString(),
 
       expiresAt: new Date(
-        Date.now() + 7 * 24 * 60 * 60 * 1000,
+        Date.now() +
+          7 *
+            24 *
+            60 *
+            60 *
+            1000,
       ).toISOString(),
     };
 
     await this.redis.set(
       `session:${sessionId}`,
+
       JSON.stringify(session),
+
       'EX',
+
       60 * 60 * 24 * 7,
     );
 
     return session;
   }
 
-  // 🔥 get session
-  async getSession(sessionId: string) {
-    const raw = await this.redis.get(
-      `session:${sessionId}`,
-    );
+  // =====================================================
+  // 🔥 GET SESSION
+  // =====================================================
+
+  async getSession(
+    sessionId: string,
+  ) {
+    const raw =
+      await this.redis.get(
+        `session:${sessionId}`,
+      );
 
     if (!raw) {
       return null;
     }
 
-    return JSON.parse(raw) as SessionData;
+    return JSON.parse(
+      raw,
+    ) as SessionData;
   }
 
-  // 🔥 validate session
+  // =====================================================
+  // 🔥 VALIDATE SESSION
+  // =====================================================
+
   async validateSession(
     sessionId: string,
+
     refreshToken: string,
   ) {
     const session =
-      await this.getSession(sessionId);
+      await this.getSession(
+        sessionId,
+      );
 
     if (!session) {
       return false;
     }
 
     return (
-      session.refreshToken === refreshToken
+      session.refreshTokenHash ===
+      this.hashToken(
+        refreshToken,
+      )
     );
   }
 
-  // 🔥 rotate refresh token
+  // =====================================================
+  // 🔥 ROTATE REFRESH TOKEN
+  // =====================================================
+
   async rotateRefreshToken(
     sessionId: string,
+
     newRefreshToken: string,
   ) {
     const session =
-      await this.getSession(sessionId);
+      await this.getSession(
+        sessionId,
+      );
 
     if (!session) {
       return;
     }
 
-    session.refreshToken =
-      newRefreshToken;
+    session.refreshTokenHash =
+      this.hashToken(
+        newRefreshToken,
+      );
+
+    session.lastUsedAt =
+      new Date().toISOString();
 
     await this.redis.set(
       `session:${sessionId}`,
+
       JSON.stringify(session),
+
       'EX',
+
       60 * 60 * 24 * 7,
     );
   }
 
-  // 🔥 delete one session
+  // =====================================================
+  // 🔥 DELETE ONE SESSION
+  // =====================================================
+
   async deleteSession(
     sessionId: string,
   ) {
@@ -148,13 +222,17 @@ export class SessionService {
     );
   }
 
-  // 🔥 logout all devices
+  // =====================================================
+  // 🔥 LOGOUT ALL DEVICES
+  // =====================================================
+
   async deleteAllUserSessions(
     userId: string,
   ) {
-    const keys = await this.redis.keys(
-      'session:*',
-    );
+    const keys =
+      await this.redis.keys(
+        'session:*',
+      );
 
     for (const key of keys) {
       const raw =
@@ -165,23 +243,33 @@ export class SessionService {
       }
 
       const session =
-        JSON.parse(raw) as SessionData;
+        JSON.parse(
+          raw,
+        ) as SessionData;
 
-      if (session.userId === userId) {
+      if (
+        session.userId ===
+        userId
+      ) {
         await this.redis.del(key);
       }
     }
   }
 
-  // 🔥 get all user sessions
+  // =====================================================
+  // 🔥 GET USER SESSIONS
+  // =====================================================
+
   async getUserSessions(
     userId: string,
   ) {
-    const keys = await this.redis.keys(
-      'session:*',
-    );
+    const keys =
+      await this.redis.keys(
+        'session:*',
+      );
 
-    const sessions: SessionData[] = [];
+    const sessions:
+      SessionData[] = [];
 
     for (const key of keys) {
       const raw =
@@ -192,16 +280,21 @@ export class SessionService {
       }
 
       const session =
-        JSON.parse(raw) as SessionData;
+        JSON.parse(
+          raw,
+        ) as SessionData;
 
-      if (session.userId === userId) {
-        // 🔥 NEVER expose refresh token
+      if (
+        session.userId ===
+        userId
+      ) {
         sessions.push({
           id: session.id,
 
-          userId: session.userId,
+          userId:
+            session.userId,
 
-          refreshToken: '',
+          refreshTokenHash: '',
 
           ipAddress:
             session.ipAddress,
@@ -220,6 +313,12 @@ export class SessionService {
 
           expiresAt:
             session.expiresAt,
+
+          revokedAt:
+            session.revokedAt,
+
+          lastUsedAt:
+            session.lastUsedAt,
         });
       }
     }
@@ -227,12 +326,17 @@ export class SessionService {
     return sessions;
   }
 
-  // 🔥 require valid session
+  // =====================================================
+  // 🔥 REQUIRE VALID SESSION
+  // =====================================================
+
   async requireSession(
     sessionId: string,
   ) {
     const session =
-      await this.getSession(sessionId);
+      await this.getSession(
+        sessionId,
+      );
 
     if (!session) {
       throw new UnauthorizedException(

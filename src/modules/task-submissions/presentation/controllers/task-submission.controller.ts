@@ -6,7 +6,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { JwtAuthGuard } from '@modules/identity/presentation/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '@common/guards/auth/jwt-auth.guard';
 
 import { SubmitTaskSubmissionUseCase } from '@modules/task-submissions/application/use-cases/submit-task-submission.usecase';
 

@@ -101,9 +101,9 @@ model User {
 
   phone String @unique
 
-  source String?
+  source String
 
-  country String?
+  country String
 
   appId String?
 

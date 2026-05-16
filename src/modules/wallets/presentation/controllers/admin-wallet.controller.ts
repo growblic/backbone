@@ -8,7 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { JwtAuthGuard } from '@modules/identity/presentation/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '@common/guards/auth/jwt-auth.guard';
 
 import { WalletRepository } from '@modules/wallets/domain/repositories/wallet.repository';
 

@@ -1,9 +1,10 @@
 import {
   Injectable,
   UnauthorizedException,
+  ConflictException,
 } from '@nestjs/common';
 
-import { OtpService } from '@modules/identity/application/services/otp.service';
+import { OtpService } from '@infra/sms/services/otp.service';
 
 import { CreateUserUseCase } from '@modules/identity/application/use-cases/register/create-user.usecase';
 
@@ -11,10 +12,17 @@ import { CreateProfileUseCase } from '@modules/profiles/application/use-cases/cr
 
 import { CreateWalletUseCase } from '@modules/wallets/application/use-cases/create-wallet.usecase';
 
+import { UserRepository } from '@modules/identity/domain/repositories/user.repository';
+
+import { Inject } from '@nestjs/common';
+import { UserCreatorService } from '../../services/user-creator.service';
+
 @Injectable()
 export class VerifyRegistrationUseCase {
   constructor(
     private readonly otpService: OtpService,
+
+    private readonly userCreatorService: UserCreatorService,
 
     private readonly createUser:
       CreateUserUseCase,
@@ -24,6 +32,10 @@ export class VerifyRegistrationUseCase {
 
     private readonly createWallet:
       CreateWalletUseCase,
+
+    @Inject('UserRepository')
+    private readonly userRepository:
+      UserRepository,
   ) {}
 
   async execute(
@@ -35,7 +47,7 @@ export class VerifyRegistrationUseCase {
 
     source: string,
   ) {
-    // VERIFY OTP
+    // ✅ verify OTP
     const isValid =
       await this.otpService.verifyOtp(
         phone,
@@ -48,12 +60,24 @@ export class VerifyRegistrationUseCase {
       );
     }
 
-    // DELETE OTP
+    // ✅ remove OTP
     await this.otpService.deleteOtp(
       phone,
     );
 
-    // CREATE USER
+    // ✅ check existing user
+    const existingUser =
+      await this.userRepository.findByPhone(
+        phone,
+      );
+
+    if (existingUser) {
+      throw new ConflictException(
+        'User already exists',
+      );
+    }
+
+    // ✅ create user
     const user =
       await this.createUser.execute(
         phone,
@@ -61,12 +85,12 @@ export class VerifyRegistrationUseCase {
         source,
       );
 
-    // CREATE PROFILE
+    // ✅ create profile
     await this.createProfile.execute(
       user.id,
     );
 
-    // CREATE WALLET
+    // ✅ create wallet
     await this.createWallet.execute(
       user.id,
     );
@@ -76,6 +100,21 @@ export class VerifyRegistrationUseCase {
       user.id,
     );
 
-    return user;
+    return {
+      message:
+        'Registration completed successfully',
+
+      user: {
+        id: user.id,
+
+        phone: user.phone,
+
+        country:
+          user.country,
+
+        source:
+          user.source,
+      },
+    };
   }
 }

@@ -8,18 +8,27 @@ import { SessionService } from '@modules/identity/application/services/session.s
 @Injectable()
 export class RevokeSessionUseCase {
   constructor(
-    private readonly sessionService: SessionService,
+    private readonly sessionService:
+      SessionService,
   ) {}
 
   async execute(
     currentUserId: string,
+
     sessionId: string,
   ) {
-    // get session
+    // =====================================================
+    // ✅ GET SESSION
+    // =====================================================
+
     const session =
       await this.sessionService.getSession(
         sessionId,
       );
+
+    // =====================================================
+    // ❌ SESSION NOT FOUND
+    // =====================================================
 
     if (!session) {
       throw new UnauthorizedException(
@@ -27,19 +36,34 @@ export class RevokeSessionUseCase {
       );
     }
 
-    // security check
-    if (session.userId !== currentUserId) {
+    // =====================================================
+    // ❌ SECURITY CHECK
+    // =====================================================
+
+    if (
+      session.userId !==
+      currentUserId
+    ) {
       throw new UnauthorizedException(
         'Access denied',
       );
     }
 
-    // delete session
+    // =====================================================
+    // ✅ DELETE SESSION
+    // =====================================================
+
     await this.sessionService.deleteSession(
       sessionId,
     );
 
+    // =====================================================
+    // ✅ RESPONSE
+    // =====================================================
+
     return {
+      success: true,
+
       message:
         'Session revoked successfully',
     };

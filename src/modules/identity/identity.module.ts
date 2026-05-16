@@ -3,20 +3,41 @@ import {
   forwardRef,
 } from '@nestjs/common';
 
+import { PassportModule } from '@nestjs/passport';
+
 import { JwtModule } from '@nestjs/jwt';
 
-// Infra
+// =====================================================
+// 🔥 INFRASTRUCTURE
+// =====================================================
+
 import { PrismaModule } from '@infra/prisma/prisma.module';
+
+import { SmsModule } from '@infra/sms/sms.module';
+
+// =====================================================
+// 🔥 REPOSITORIES
+// =====================================================
 
 import { UserPrismaRepository } from '@modules/identity/infrastructure/user.prisma.repository';
 
-// Modules
+// =====================================================
+// 🔥 STRATEGIES
+// =====================================================
+
+import { JwtStrategy } from '@modules/identity/infrastructure/strategies/jwt.strategy';
+
+// =====================================================
+// 🔥 MODULES
+// =====================================================
+
 import { ProfilesModule } from '@modules/profiles/profiles.module';
 
 import { WalletsModule } from '@modules/wallets/wallets.module';
 
-// Services
-import { OtpService } from '@modules/identity/application/services/otp.service';
+// =====================================================
+// 🔥 SERVICES
+// =====================================================
 
 import { TokenService } from '@modules/identity/application/services/token.service';
 
@@ -24,14 +45,22 @@ import { SessionService } from '@modules/identity/application/services/session.s
 
 import { RateLimitService } from '@modules/identity/application/services/rate-limit.service';
 
-// Register UseCases
+import { UserCreatorService } from '@modules/identity/application/services/user-creator.service';
+
+// =====================================================
+// 🔥 REGISTER USE CASES
+// =====================================================
+
 import { CreateUserUseCase } from '@modules/identity/application/use-cases/register/create-user.usecase';
 
 import { StartRegistrationUseCase } from '@modules/identity/application/use-cases/register/start-registration.usecase';
 
 import { VerifyRegistrationUseCase } from '@modules/identity/application/use-cases/register/verify-registration.usecase';
 
-// Login UseCases
+// =====================================================
+// 🔥 AUTH USE CASES
+// =====================================================
+
 import { StartLoginUseCase } from '@modules/identity/application/use-cases/auth/start-login.usecase';
 
 import { VerifyLoginUseCase } from '@modules/identity/application/use-cases/auth/verify-login.usecase';
@@ -46,30 +75,69 @@ import { RevokeSessionUseCase } from '@modules/identity/application/use-cases/au
 
 import { LogoutAllDevicesUseCase } from '@modules/identity/application/use-cases/auth/logout-all-devices.usecase';
 
-// Controllers
+// =====================================================
+// 🔥 CONTROLLERS
+// =====================================================
+
 import { IdentityController } from '@modules/identity/presentation/controllers/identity.controller';
 
 import { MeController } from '@modules/identity/presentation/controllers/me.controller';
 
 import { SessionController } from '@modules/identity/presentation/controllers/session.controller';
 
-import { AdminController } from '@modules/identity/presentation/controllers/admin.controller';
 
-// Guards
-import { JwtAuthGuard } from '@modules/identity/presentation/guards/jwt-auth.guard';
+// =====================================================
+// 🔥 GUARDS
+// =====================================================
 
-import { RolesGuard } from '@modules/identity/presentation/guards/roles.guard';
+import { JwtAuthGuard } from '@common/guards/auth/jwt-auth.guard';
+
+import { RolesGuard } from '@common/guards/authorization/roles.guard';
 
 @Module({
   imports: [
+    // =====================================================
+    // 🗄️ DATABASE
+    // =====================================================
+
     PrismaModule,
+
+    // =====================================================
+    // 📲 SMS
+    // =====================================================
+
+    SmsModule,
+
+    // =====================================================
+    // 👤 PROFILE / WALLET MODULES
+    // =====================================================
+
     WalletsModule,
 
     forwardRef(
       () => ProfilesModule,
     ),
 
-    JwtModule.register({}),
+    // =====================================================
+    // 🔐 PASSPORT
+    // =====================================================
+
+    PassportModule,
+
+    // =====================================================
+    // 🔐 JWT
+    // =====================================================
+
+    JwtModule.register({
+      secret:
+        process.env.JWT_ACCESS_SECRET,
+
+      signOptions: {
+        expiresIn:
+          (process.env.JWT_ACCESS_EXPIRES_IN ||
+          '15m') as any,
+      },
+    }),
   ],
 
   controllers: [
@@ -79,14 +147,16 @@ import { RolesGuard } from '@modules/identity/presentation/guards/roles.guard';
 
     SessionController,
 
-    AdminController,
+    
   ],
 
   providers: [
-    // Infrastructure
+    // =====================================================
+    // 🗄️ REPOSITORIES
+    // =====================================================
+
     UserPrismaRepository,
 
-    // Repository Binding
     {
       provide: 'UserRepository',
 
@@ -94,8 +164,9 @@ import { RolesGuard } from '@modules/identity/presentation/guards/roles.guard';
         UserPrismaRepository,
     },
 
-    // Services
-    OtpService,
+    // =====================================================
+    // 🔥 SERVICES
+    // =====================================================
 
     TokenService,
 
@@ -103,19 +174,36 @@ import { RolesGuard } from '@modules/identity/presentation/guards/roles.guard';
 
     RateLimitService,
 
-    // Guards
+    UserCreatorService,
+
+    // =====================================================
+    // 🔐 AUTH STRATEGIES
+    // =====================================================
+
+    JwtStrategy,
+
+    // =====================================================
+    // 🛡️ GUARDS
+    // =====================================================
+
     JwtAuthGuard,
 
     RolesGuard,
 
-    // Register
+    // =====================================================
+    // 👤 REGISTER FLOW
+    // =====================================================
+
     CreateUserUseCase,
 
     StartRegistrationUseCase,
 
     VerifyRegistrationUseCase,
 
-    // Login
+    // =====================================================
+    // 🔑 LOGIN FLOW
+    // =====================================================
+
     StartLoginUseCase,
 
     VerifyLoginUseCase,
@@ -132,20 +220,36 @@ import { RolesGuard } from '@modules/identity/presentation/guards/roles.guard';
   ],
 
   exports: [
+    // =====================================================
+    // 🔥 SERVICES
+    // =====================================================
+
     TokenService,
 
     SessionService,
 
+    // =====================================================
+    // 🛡️ GUARDS
+    // =====================================================
+
     JwtAuthGuard,
 
-    // Register
+    RolesGuard,
+
+    // =====================================================
+    // 👤 REGISTER FLOW
+    // =====================================================
+
     CreateUserUseCase,
 
     StartRegistrationUseCase,
 
     VerifyRegistrationUseCase,
 
-    // Login
+    // =====================================================
+    // 🔑 LOGIN FLOW
+    // =====================================================
+
     StartLoginUseCase,
 
     VerifyLoginUseCase,

@@ -5,7 +5,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { JwtAuthGuard } from '@modules/identity/presentation/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '@common/guards/auth/jwt-auth.guard';
 
 import { CreateAdCampaignUseCase } from '@modules/ad-rewards/application/use-cases/create-ad-campaign.usecase';
 

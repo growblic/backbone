@@ -1,6 +1,4 @@
-import {
-  Injectable,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
 
@@ -10,60 +8,85 @@ export class TokenService {
     private readonly jwtService: JwtService,
   ) {}
 
+  // =====================================================
+  // ✅ ACCESS TOKEN
+  // =====================================================
+
   generateAccessToken(payload: {
     sub: string;
 
     role: string;
+
+    sessionId: string;
   }): string {
-    return this.jwtService.sign(
-      payload as Record<string, any>,
-      {
-        secret:
-          process.env.JWT_ACCESS_SECRET as string,
+    return this.jwtService.sign(payload, {
+      secret:
+        process.env.JWT_ACCESS_SECRET as string,
 
-        expiresIn:
-          (process.env
-            .JWT_ACCESS_EXPIRES_IN ??
-            '15m') as any,
-      },
-    );
+      expiresIn:
+        (process.env.JWT_ACCESS_EXPIRES_IN ??
+          '15m') as any,
+
+      issuer: 'growblic-api',
+
+      audience: 'growblic-users',
+    });
   }
 
-  generateRefreshToken(
-    payload: Record<string, any>,
-  ): string {
-    return this.jwtService.sign(
-      payload as Record<string, any>,
-      {
-        secret:
-          process.env.JWT_REFRESH_SECRET as string,
+  // =====================================================
+  // ✅ REFRESH TOKEN
+  // =====================================================
 
-        expiresIn: '30d' as any,
-      },
-    );
+  generateRefreshToken(payload: {
+    sub: string;
+
+    sessionId: string;
+  }): string {
+    return this.jwtService.sign(payload, {
+      secret:
+        process.env.JWT_REFRESH_SECRET as string,
+
+      expiresIn:
+        (process.env.JWT_REFRESH_EXPIRES_IN ??
+          '30d') as any,
+
+      issuer: 'growblic-api',
+
+      audience: 'growblic-users',
+    });
   }
+
+  // =====================================================
+  // ✅ VERIFY ACCESS TOKEN
+  // =====================================================
 
   verifyAccessToken(
     token: string,
   ) {
-    return this.jwtService.verify(
-      token,
-      {
-        secret:
-          process.env.JWT_ACCESS_SECRET as string,
-      },
-    );
+    return this.jwtService.verify(token, {
+      secret:
+        process.env.JWT_ACCESS_SECRET as string,
+
+      issuer: 'growblic-api',
+
+      audience: 'growblic-users',
+    });
   }
+
+  // =====================================================
+  // ✅ VERIFY REFRESH TOKEN
+  // =====================================================
 
   verifyRefreshToken(
     token: string,
   ) {
-    return this.jwtService.verify(
-      token,
-      {
-        secret:
-          process.env.JWT_REFRESH_SECRET as string,
-      },
-    );
+    return this.jwtService.verify(token, {
+      secret:
+        process.env.JWT_REFRESH_SECRET as string,
+
+      issuer: 'growblic-api',
+
+      audience: 'growblic-users',
+    });
   }
 }

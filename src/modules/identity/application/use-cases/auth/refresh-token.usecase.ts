@@ -13,28 +13,39 @@ import { UserRepository } from '@modules/identity/domain/repositories/user.repos
 @Injectable()
 export class RefreshTokenUseCase {
   constructor(
-    private readonly tokenService: TokenService,
+    private readonly tokenService:
+      TokenService,
 
-    private readonly sessionService: SessionService,
+    private readonly sessionService:
+      SessionService,
 
     @Inject('UserRepository')
-    private readonly userRepo: UserRepository,
+    private readonly userRepo:
+      UserRepository,
   ) {}
 
-  async execute(refreshToken: string) {
-    // 🔥 verify refresh token
+  async execute(
+    refreshToken: string,
+  ) {
+    // =====================================================
+    // ✅ VERIFY REFRESH TOKEN
+    // =====================================================
+
     const decoded =
       this.tokenService.verifyRefreshToken(
         refreshToken,
       );
 
     const userId =
-      decoded.userId;
+      decoded.sub;
 
     const sessionId =
       decoded.sessionId;
 
-    // 🔥 validate redis session
+    // =====================================================
+    // ✅ VALIDATE SESSION
+    // =====================================================
+
     const isValid =
       await this.sessionService.validateSession(
         sessionId,
@@ -47,7 +58,10 @@ export class RefreshTokenUseCase {
       );
     }
 
-    // 🔥 get user
+    // =====================================================
+    // ✅ GET USER
+    // =====================================================
+
     const user =
       await this.userRepo.findById(
         userId,
@@ -59,26 +73,47 @@ export class RefreshTokenUseCase {
       );
     }
 
-    // 🔥 generate new access token
+    // =====================================================
+    // ✅ GENERATE ACCESS TOKEN
+    // =====================================================
+
     const newAccessToken =
-      this.tokenService.generateAccessToken({
-        sub: user.id,
+      this.tokenService.generateAccessToken(
+        {
+          sub: user.id,
 
-        role: user.role,
-      });
+          role: user.role,
 
-    // 🔥 generate rotated refresh token
+          sessionId,
+        },
+      );
+
+    // =====================================================
+    // ✅ GENERATE ROTATED REFRESH TOKEN
+    // =====================================================
+
     const newRefreshToken =
-      this.tokenService.generateRefreshToken({
-        userId,
-        sessionId,
-      });
+      this.tokenService.generateRefreshToken(
+        {
+          sub: user.id,
 
-    // 🔥 rotate refresh token in redis
+          sessionId,
+        },
+      );
+
+    // =====================================================
+    // ✅ ROTATE REFRESH TOKEN
+    // =====================================================
+
     await this.sessionService.rotateRefreshToken(
       sessionId,
+
       newRefreshToken,
     );
+
+    // =====================================================
+    // ✅ RESPONSE
+    // =====================================================
 
     return {
       accessToken:

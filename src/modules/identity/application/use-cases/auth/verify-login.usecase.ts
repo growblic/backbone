@@ -1,129 +1,167 @@
 import {
   Inject,
   Injectable,
-  UnauthorizedException,
 } from '@nestjs/common';
 
 import { UserRepository } from '@modules/identity/domain/repositories/user.repository';
 
-import { OtpService } from '@modules/identity/application/services/otp.service';
+import { OtpService } from '@infra/sms/services/otp.service';
 
 import { TokenService } from '@modules/identity/application/services/token.service';
 
 import { SessionService } from '@modules/identity/application/services/session.service';
 
-import { CreateUserUseCase } from '@modules/identity/application/use-cases/register/create-user.usecase';
+import { UserCreatorService } from '../../services/user-creator.service';
 
 @Injectable()
 export class VerifyLoginUseCase {
   constructor(
-    private readonly otpService: OtpService,
+    private readonly otpService:
+      OtpService,
 
     @Inject('UserRepository')
-    private readonly userRepo: UserRepository,
+    private readonly userRepo:
+      UserRepository,
 
-    private readonly tokenService: TokenService,
+    private readonly tokenService:
+      TokenService,
 
-    private readonly sessionService: SessionService,
+    private readonly sessionService:
+      SessionService,
 
-    private readonly createUserUseCase: CreateUserUseCase,
+    private readonly userCreatorService:
+      UserCreatorService,
   ) {}
 
   async execute(
     phone: string,
+
     otp: string,
+
+    source: string,
 
     metadata?: {
       ipAddress?: string;
+
       userAgent?: string;
+
       deviceName?: string;
     },
   ) {
-    // 🔥 verify otp
-    const isValid =
-      await this.otpService.verifyOtp(
-        phone,
-        otp,
-      );
+    // =====================================================
+    // ✅ VERIFY OTP
+    // =====================================================
 
-    if (!isValid) {
-      throw new UnauthorizedException(
-        'Invalid or expired OTP',
-      );
-    }
-
-    // 🔥 remove otp
-    await this.otpService.deleteOtp(
+    await this.otpService.verifyOtp(
       phone,
+      otp,
     );
 
-    // 🔥 get user
+    // =====================================================
+    // ✅ GET USER
+    // =====================================================
+
     let user =
       await this.userRepo.findByPhone(
         phone,
       );
 
-    // 🔥 auto create user if not exists
+    // =====================================================
+    // ✅ AUTO CREATE USER
+    // =====================================================
+
     if (!user) {
       user =
-        await this.createUserUseCase.execute(
+        await this.userCreatorService.createUser(
           phone,
-          'IN',
-          'login',
         );
     }
 
-    // 🔥 generate fingerprint
+    // =====================================================
+    // ✅ USER SAFETY CHECK
+    // =====================================================
+
+    if (!user) {
+      throw new Error(
+        'User creation failed',
+      );
+    }
+
+    // =====================================================
+    // ✅ GENERATE FINGERPRINT
+    // =====================================================
+
     const fingerprint =
       `${metadata?.ipAddress}-${metadata?.userAgent}-${metadata?.deviceName}`;
 
-    // 🔥 temporary refresh token
+    // =====================================================
+    // ✅ CREATE SESSION
+    // =====================================================
+
     const temporaryRefreshToken =
-      this.tokenService.generateRefreshToken({
-        userId: user.id,
-        sessionId: 'temp',
-      });
+  'temp-session-token';
 
-    // 🔥 create redis session
-    const session =
-      await this.sessionService.createSession(
-        user.id,
+const session =
+  await this.sessionService.createSession(
+    user.id,
 
-        temporaryRefreshToken,
+    temporaryRefreshToken,
 
+    {
+      ipAddress:
+        metadata?.ipAddress,
+
+      userAgent:
+        metadata?.userAgent,
+
+      deviceName:
+        metadata?.deviceName,
+
+      fingerprint,
+    },
+  );
+
+    // =====================================================
+    // ✅ ACCESS TOKEN
+    // =====================================================
+
+    const accessToken =
+      this.tokenService.generateAccessToken(
         {
-          ipAddress:
-            metadata?.ipAddress,
+          sub: user.id,
 
-          userAgent:
-            metadata?.userAgent,
+          role: user.role,
 
-          deviceName:
-            metadata?.deviceName,
-
-          fingerprint,
+          sessionId: session.id,
         },
       );
 
-    // 🔥 generate final access token
-    const accessToken =
-      this.tokenService.generateAccessToken({
-        sub: user.id,
-        role: user.role,
-      });
+    // =====================================================
+    // ✅ REFRESH TOKEN
+    // =====================================================
 
-    // 🔥 generate final refresh token
     const refreshToken =
-      this.tokenService.generateRefreshToken({
-        userId: user.id,
-        sessionId: session.id,
-      });
+      this.tokenService.generateRefreshToken(
+        {
+          sub: user.id,
 
-    // 🔥 rotate refresh token
+          sessionId: session.id,
+        },
+      );
+
+    // =====================================================
+    // ✅ ROTATE REFRESH TOKEN
+    // =====================================================
+
     await this.sessionService.rotateRefreshToken(
       session.id,
+
       refreshToken,
     );
+
+    // =====================================================
+    // ✅ RESPONSE
+    // =====================================================
 
     return {
       accessToken,
@@ -150,6 +188,8 @@ export class VerifyLoginUseCase {
         id: user.id,
 
         phone: user.phone,
+
+        role: user.role,
       },
     };
   }

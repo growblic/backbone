@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { JwtAuthGuard }
-from '@modules/identity/presentation/guards/jwt-auth.guard';
+from '@common/guards/auth/jwt-auth.guard'; 
 
 import { CurrentUser }
 from '@common/decorators/current-user.decorator';

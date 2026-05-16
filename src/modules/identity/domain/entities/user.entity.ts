@@ -9,7 +9,7 @@ export type User = {
 
   source: string;
 
-  role: Role;
+  role: string;
 
   createdAt: Date;
 

@@ -1,41 +1,63 @@
-import {
-  Injectable,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { SessionService } from '@modules/identity/application/services/session.service';
 
 @Injectable()
 export class GetSessionsUseCase {
   constructor(
-    private readonly sessionService: SessionService,
+    private readonly sessionService:
+      SessionService,
   ) {}
 
   async execute(userId: string) {
+    // =====================================================
+    // ✅ GET USER SESSIONS
+    // =====================================================
+
     const sessions =
       await this.sessionService.getUserSessions(
         userId,
       );
 
+    // =====================================================
+    // ✅ RESPONSE
+    // =====================================================
+
     return {
-      sessions: sessions.map((session) => ({
-        id: session.id,
-        userId: session.userId,
+      success: true,
 
-        ipAddress:
-          session.ipAddress,
+      sessions: sessions.map(
+        (session) => ({
+          id: session.id,
 
-        userAgent:
-          session.userAgent,
+          userId:
+            session.userId,
 
-        deviceName:
-          session.deviceName,
+          ipAddress:
+            session.ipAddress,
 
-        createdAt:
-          session.createdAt,
+          userAgent:
+            session.userAgent,
 
-        expiresAt:
-          session.expiresAt,
-      })),
+          deviceName:
+            session.deviceName,
+
+          fingerprint:
+            session.fingerprint,
+
+          createdAt:
+            session.createdAt,
+
+          expiresAt:
+            session.expiresAt,
+
+          revokedAt:
+            session.revokedAt,
+
+          isActive:
+            !session.revokedAt,
+        }),
+      ),
     };
   }
 }

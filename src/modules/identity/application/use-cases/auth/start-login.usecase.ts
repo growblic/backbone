@@ -1,26 +1,79 @@
-import { Injectable } from '@nestjs/common';
-import { OtpService } from '@modules/identity/application/services/otp.service';
-import { RateLimitService } from '@identity/application/services/rate-limit.service';
+import {
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+
+import { OtpService } from '@infra/sms/services/otp.service';
 
 @Injectable()
 export class StartLoginUseCase {
+  private readonly logger =
+    new Logger(
+      StartLoginUseCase.name,
+    );
+
   constructor(
-    private readonly otpService: OtpService,
-    private readonly rateLimitService:RateLimitService,
+    private readonly otpService:
+      OtpService,
   ) {}
 
   async execute(phone: string) {
-    await this.rateLimitService.checkOtpLimit(phone);
-    // 🔢 OTP generate
-    const otp = this.otpService.generateOtp();
+    // =====================================================
+    // ✅ REQUEST RECEIVED
+    // =====================================================
 
-    // ⏳ save with TTL (5 min)
-    await this.otpService.saveOtp(phone, otp, 300);
+    this.logger.log(
+      `📲 LOGIN OTP REQUEST => ${phone}`,
+    );
 
-    console.log('LOGIN OTP:', otp);
+    // =====================================================
+    // ✅ GENERATE OTP
+    // =====================================================
+
+    const otp =
+      this.otpService.generateOtp();
+
+    this.logger.log(
+      `🔐 GENERATED OTP => ${otp}`,
+    );
+
+    // =====================================================
+    // ✅ SAVE OTP IN REDIS
+    // =====================================================
+
+    await this.otpService.saveOtp(
+      phone,
+      otp,
+      300,
+    );
+
+    this.logger.log(
+      `💾 OTP SAVED IN REDIS`,
+    );
+
+    // =====================================================
+    // ✅ SEND OTP SMS
+    // =====================================================
+
+    await this.otpService.sendOtp(
+      phone,
+      otp,
+      'login',
+    );
+
+    this.logger.log(
+      `📤 LOGIN OTP SENT`,
+    );
+
+    // =====================================================
+    // ✅ RESPONSE
+    // =====================================================
 
     return {
-      message: 'OTP sent successfully',
+      success: true,
+
+      message:
+        'OTP sent successfully',
     };
   }
 }

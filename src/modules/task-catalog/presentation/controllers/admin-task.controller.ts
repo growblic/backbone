@@ -7,7 +7,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { JwtAuthGuard } from '@modules/identity/presentation/guards/jwt-auth.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
+
+import { JwtAuthGuard } from '@common/guards/auth/jwt-auth.guard';
 
 import { CreateTaskUseCase } from '@modules/task-catalog/application/use-cases/create-task.usecase';
 
@@ -23,6 +25,7 @@ import { UpdateTaskDto } from '../dto/update-task.dto';
 
 @Controller('admin/tasks')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth('access-token')
 export class AdminTaskController {
   constructor(
     private readonly createTask:

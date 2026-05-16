@@ -7,7 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { JwtAuthGuard } from '@modules/identity/presentation/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '@common/guards/auth/jwt-auth.guard';
 import { ApproveTaskSubmissionUseCase } from '@modules/task-submissions/application/use-cases/approve-task-submission.usecase';
 
 import { GetPendingTaskSubmissionsUseCase } from '@modules/task-submissions/application/use-cases/get-pending-task-submissions.usecase';

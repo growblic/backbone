@@ -7,7 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import { JwtAuthGuard } from '@modules/identity/presentation/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '@common/guards/auth/jwt-auth.guard';
 
 import { GetMyWalletUseCase } from '@modules/wallets/application/use-cases/get-my-wallet.usecase';
 
