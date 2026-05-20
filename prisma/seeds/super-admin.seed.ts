@@ -15,9 +15,6 @@ async function main() {
     });
 
   if (existingAdmin) {
-    console.log(
-      '✅ Super Admin already exists',
-    );
 
     return;
   }
@@ -53,10 +50,7 @@ async function main() {
       },
     });
 
-  console.log(
-    '🚀 Super Admin Created:',
-    admin.id,
-  );
+
 }
 
 main()

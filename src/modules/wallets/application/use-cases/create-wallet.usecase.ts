@@ -37,11 +37,6 @@ export class CreateWalletUseCase {
         walletHandle,
       });
 
-    console.log(
-      'WALLET CREATED 💰',
-      wallet.id,
-    );
-
     return wallet;
   }
 }

@@ -12,9 +12,6 @@ export class LoggerMiddleware
     res: any,
     next: () => void,
   ) {
-    console.log(
-      `🚀 ${req.method} ${req.originalUrl || req.url}`,
-    );
 
     next();
   }

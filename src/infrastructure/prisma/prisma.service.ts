@@ -15,8 +15,6 @@ export class PrismaService
         },
       },
     });
-
-    console.log('Prisma DATABASE_URL =>', process.env.DATABASE_URL);
   }
 
   async onModuleInit() {

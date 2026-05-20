@@ -14,7 +14,6 @@ export class CreateUserUseCase {
     const existing = await this.userRepo.findByPhone(phone);
 
     if (existing) {
-      console.log('USER ALREADY EXISTS ⚠️', existing.id);
       return existing;
     }
 
@@ -25,8 +24,6 @@ export class CreateUserUseCase {
       source,
       role: Role.USER,
     });
-
-    console.log('USER CREATED ✅', user.id);
 
     return user;
   }

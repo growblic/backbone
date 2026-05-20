@@ -39,10 +39,6 @@ export class ProfileController {
   async getProfile(
     @Req() req: any,
   ) {
-    console.log(
-      'JWT USER =>',
-      req.user,
-    );
 
     return this.getMyProfile.execute(
       req.user.sub,

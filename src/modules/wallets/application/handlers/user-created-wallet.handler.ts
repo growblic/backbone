@@ -12,7 +12,6 @@ export class UserCreatedWalletHandler {
 
   @OnEvent(UserCreatedEvent.EVENT_NAME)
   async handle(event: UserCreatedEvent) {
-    console.log('💰 WALLET HANDLER CALLED');
 
     await this.createWallet.execute(event.userId);
   }

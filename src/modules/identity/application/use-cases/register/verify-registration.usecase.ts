@@ -95,11 +95,6 @@ export class VerifyRegistrationUseCase {
       user.id,
     );
 
-    console.log(
-      'REGISTRATION COMPLETE 🎉',
-      user.id,
-    );
-
     return {
       message:
         'Registration completed successfully',

@@ -66,10 +66,7 @@ export class SmsGatewayHubProvider
           },
         );
 
-      console.log(
-        'SMS RESPONSE:',
-        response.data,
-      );
+      
 
       const messageData =
         (response.data as any)
@@ -89,11 +86,6 @@ export class SmsGatewayHubProvider
           messageData?.MessageId,
       };
     } catch (error: any) {
-      console.log(
-        'SMS ERROR:',
-        error?.response?.data ||
-          error?.message,
-      );
 
       this.logger.error(
         `SMS sending failed`,

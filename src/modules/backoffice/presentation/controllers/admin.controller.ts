@@ -4,11 +4,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import {
-  ApiBearerAuth,
-  ApiTags,
-} from '@nestjs/swagger';
-
 import { JwtAuthGuard }
 from '@common/guards/auth/jwt-auth.guard';
 
@@ -30,9 +25,6 @@ from '@modules/identity/domain/enums/role.enum';
 import { Permission }
 from '@modules/identity/domain/enums/permission.enum';
 
-@ApiTags('Admin')
-
-@ApiBearerAuth('access-token')
 
 @Controller('admin')
 export class AdminController {

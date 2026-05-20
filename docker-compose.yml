@@ -1,22 +1,122 @@
 services:
+
+  # =====================================================
+  # POSTGRESQL
+  # =====================================================
+
   postgres-db:
-    image: postgres:15
+    image: postgres:18-alpine
+
     container_name: growblic-postgres
+
     restart: always
+
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: DadiDadu
-      POSTGRES_DB: growblic_db
+      POSTGRES_PASSWORD: growblic-password
+      POSTGRES_DB: growblic-db
+
     ports:
       - "5432:5432"
+
     volumes:
-      - growblic_pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
+
     networks:
       - growblic-network
 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+
+  # =====================================================
+  # REDIS
+  # =====================================================
+
+  redis:
+    image: redis:8-alpine
+
+    container_name: growblic-redis
+
+    restart: always
+
+    command: redis-server --appendonly yes
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis_data:/data
+
+    networks:
+      - growblic-network
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+
+  # =====================================================
+  # NESTJS APPLICATION
+  # =====================================================
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: growblic-api
+
+    restart: always
+
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+    env_file:
+      - .env
+
+    ports:
+      - "3000:3000"
+
+    networks:
+      - growblic-network
+
+    command: >
+      sh -c "
+      npx prisma migrate deploy &&
+      node dist/src/main.js
+      "
+
+
+
+# =====================================================
+# VOLUMES
+# =====================================================
+
 volumes:
-  growblic_pgdata:
+
+  postgres_data:
+
+  redis_data:
+
+
+
+# =====================================================
+# NETWORK
+# =====================================================
 
 networks:
+
   growblic-network:
     driver: bridge

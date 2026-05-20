@@ -43,12 +43,6 @@ export class OtpService {
   ) {
     const key = `otp:${phone}`;
 
-    console.log(
-      '💾 SAVING OTP =>',
-      key,
-      otp,
-    );
-
     await this.redisService.set(
       key,
 
@@ -69,26 +63,12 @@ export class OtpService {
   ): Promise<boolean> {
     const key = `otp:${phone}`;
 
-    console.log(
-      '🔍 VERIFYING OTP =>',
-      key,
-    );
-
+  
     const storedOtp =
       await this.redisService.get(
         key,
       );
-
-    console.log(
-      '📦 STORED OTP =>',
-      storedOtp,
-    );
-
-    console.log(
-      '📲 RECEIVED OTP =>',
-      otp,
-    );
-
+      
     if (!storedOtp) {
       throw new UnauthorizedException(
         'OTP expired',
@@ -98,11 +78,6 @@ export class OtpService {
     const isValid =
       storedOtp.toString().trim() ===
       otp.toString().trim();
-
-    console.log(
-      '✅ OTP MATCH =>',
-      isValid,
-    );
 
     if (!isValid) {
       throw new UnauthorizedException(
@@ -121,11 +96,6 @@ export class OtpService {
     phone: string,
   ) {
     const key = `otp:${phone}`;
-
-    console.log(
-      '🗑️ DELETING OTP =>',
-      key,
-    );
 
     await this.redisService.del(
       key,
@@ -154,11 +124,6 @@ export class OtpService {
         '{{OTP}}',
         otp,
       );
-
-    console.log(
-      '📤 SENDING SMS TO =>',
-      phone,
-    );
 
     return this.smsRouterService.sendSms(
       {

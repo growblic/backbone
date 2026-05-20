@@ -8,13 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
-import {
-  ApiBearerAuth,
-  ApiBody,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+
 
 import { StartRegistrationUseCase } from '@modules/identity/application/use-cases/register/start-registration.usecase';
 
@@ -42,7 +36,6 @@ import { RefreshTokenDto } from '../dto/auth/token/refresh-token.dto';
 
 import { LogoutDto } from '../dto/auth/logout/logout.dto';
 
-@ApiTags('Identity / Authentication')
 @Controller('auth')
 export class IdentityController {
   constructor(
@@ -74,20 +67,8 @@ export class IdentityController {
   // =========================================================
 
   @Post('test')
-  @ApiOperation({
-    summary: 'Test API',
-    description:
-      'Simple test endpoint for checking controller',
-  })
-  @ApiResponse({
-    status: 200,
-    description:
-      'API working successfully',
-  })
+
   testApi() {
-    console.log(
-      '🔥 TEST API HIT',
-    );
 
     return {
       success: true,
@@ -102,28 +83,10 @@ export class IdentityController {
   // =========================================================
 
   @Post('register/start')
-  @ApiOperation({
-    summary: 'Start user registration',
-    description:
-      'Send OTP for new user registration',
-  })
-  @ApiBody({
-    type: StartRegisterDto,
-  })
-  @ApiResponse({
-    status: 201,
-    description:
-      'Registration OTP sent successfully',
-  })
   async startRegister(
     @Body()
     body: StartRegisterDto,
   ) {
-    console.log(
-      '🔥 REGISTER START API HIT',
-    );
-
-    console.log(body);
 
     await this.startRegistrationUseCase.execute(
       body.phone,
@@ -142,28 +105,10 @@ export class IdentityController {
   // =========================================================
 
   @Post('register/verify')
-  @ApiOperation({
-    summary: 'Verify registration OTP',
-    description:
-      'Verify OTP and create new user account',
-  })
-  @ApiBody({
-    type: VerifyRegisterDto,
-  })
-  @ApiResponse({
-    status: 201,
-    description:
-      'User registered successfully',
-  })
   async verifyRegister(
     @Body()
     body: VerifyRegisterDto,
   ) {
-    console.log(
-      '🔥 VERIFY REGISTER API HIT',
-    );
-
-    console.log(body);
 
     return this.verifyRegistrationUseCase.execute(
       body.phone,
@@ -178,28 +123,10 @@ export class IdentityController {
   // =========================================================
 
   @Post('login/start')
-  @ApiOperation({
-    summary: 'Start user login',
-    description:
-      'Send OTP for user login',
-  })
-  @ApiBody({
-    type: StartLoginDto,
-  })
-  @ApiResponse({
-    status: 200,
-    description:
-      'Login OTP sent successfully',
-  })
   async startLogin(
     @Body()
     body: StartLoginDto,
   ) {
-    console.log(
-      '🔥 LOGIN START API HIT',
-    );
-
-    console.log(body);
 
     return this.startLoginUseCase.execute(
       body.phone,
@@ -211,30 +138,12 @@ export class IdentityController {
   // =========================================================
 
   @Post('login/verify')
-  @ApiOperation({
-    summary: 'Verify login OTP',
-    description:
-      'Verify OTP and generate access tokens',
-  })
-  @ApiBody({
-    type: VerifyLoginDto,
-  })
-  @ApiResponse({
-    status: 200,
-    description:
-      'User logged in successfully',
-  })
   async verifyLogin(
     @Body()
     body: VerifyLoginDto,
 
     @Req() req: any,
   ) {
-    console.log(
-      '🔥 LOGIN VERIFY API HIT',
-    );
-
-    console.log(body);
 
     if (!body.source) {
       throw new BadRequestException(
@@ -271,28 +180,10 @@ export class IdentityController {
   // =========================================================
 
   @Post('refresh')
-  @ApiOperation({
-    summary: 'Refresh access token',
-    description:
-      'Generate new access token using refresh token',
-  })
-  @ApiBody({
-    type: RefreshTokenDto,
-  })
-  @ApiResponse({
-    status: 200,
-    description:
-      'Access token refreshed successfully',
-  })
   async refresh(
     @Body()
     body: RefreshTokenDto,
   ) {
-    console.log(
-      '🔥 REFRESH TOKEN API HIT',
-    );
-
-    console.log(body);
 
     return this.refreshTokenUseCase.execute(
       body.refreshToken,
@@ -304,28 +195,10 @@ export class IdentityController {
   // =========================================================
 
   @Post('logout')
-  @ApiOperation({
-    summary: 'Logout user',
-    description:
-      'Logout current session and invalidate tokens',
-  })
-  @ApiBody({
-    type: LogoutDto,
-  })
-  @ApiResponse({
-    status: 200,
-    description:
-      'User logged out successfully',
-  })
   async logout(
     @Body()
     body: LogoutDto,
   ) {
-    console.log(
-      '🔥 LOGOUT API HIT',
-    );
-
-    console.log(body);
 
     return this.logoutUseCase.execute(
       body.sessionId,
@@ -338,26 +211,7 @@ export class IdentityController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Get current user',
-    description:
-      'Protected route to get authenticated user details',
-  })
-  @ApiResponse({
-    status: 200,
-    description:
-      'Protected route accessed successfully',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized',
-  })
   async me(@Req() req: any) {
-    console.log(
-      '🔥 PROTECTED ROUTE HIT',
-    );
-
     return {
       success: true,
 

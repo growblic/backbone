@@ -7,8 +7,6 @@ import { UserVerifiedEvent } from '../../domain/events/user-verified.event';
 export class UserVerifiedHandler {
 
   @OnEvent(UserVerifiedEvent.EVENT_NAME)
-  async handle(event: UserVerifiedEvent) {
-    console.log('HANDLER CALLED ✅');
-    
+  async handle(event: UserVerifiedEvent) {  
   }
 }

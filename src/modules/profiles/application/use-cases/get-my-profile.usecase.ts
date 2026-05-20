@@ -14,20 +14,12 @@ export class GetMyProfileUseCase {
   ) {}
 
   async execute(userId: string) {
-    console.log(
-      'GET PROFILE USER ID =>',
-      userId,
-    );
+
 
     const profile =
       await this.profileRepo.findByUserId(
         userId,
       );
-
-    console.log(
-      'PROFILE FOUND =>',
-      profile,
-    );
 
     if (!profile) {
       throw new NotFoundException(

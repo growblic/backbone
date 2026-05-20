@@ -17,14 +17,6 @@ export class StartRegistrationUseCase {
     phone: string,
   ): Promise<any> {
     try {
-      console.log(
-        '✅ STEP 1 => REQUEST RECEIVED',
-      );
-
-      console.log(
-        'PHONE =>',
-        phone,
-      );
 
       // =====================================================
       // ✅ RATE LIMIT
@@ -34,25 +26,12 @@ export class StartRegistrationUseCase {
         phone,
       );
 
-      console.log(
-        '✅ STEP 2 => RATE LIMIT CHECKED',
-      );
-
       // =====================================================
       // ✅ GENERATE OTP
       // =====================================================
 
       const otp =
         this.otpService.generateOtp();
-
-      console.log(
-        '✅ STEP 3 => OTP GENERATED',
-      );
-
-      console.log(
-        'OTP =>',
-        otp,
-      );
 
       // =====================================================
       // ✅ SAVE OTP
@@ -64,17 +43,9 @@ export class StartRegistrationUseCase {
         300,
       );
 
-      console.log(
-        '✅ STEP 4 => OTP SAVED IN REDIS',
-      );
-
       // =====================================================
       // ✅ SEND SMS
       // =====================================================
-
-      console.log(
-        '✅ STEP 5 => SENDING SMS...',
-      );
 
       const smsResponse =
         await this.otpService.sendOtp(
@@ -83,19 +54,6 @@ export class StartRegistrationUseCase {
           'registration',
         );
 
-      console.log(
-        '✅ STEP 6 => SMS RESPONSE',
-      );
-
-      console.log(
-        smsResponse,
-      );
-
-      console.log(
-        '🔥 REGISTRATION OTP SENT:',
-        otp,
-      );
-
       return {
         success: true,
 
@@ -103,12 +61,6 @@ export class StartRegistrationUseCase {
           'Registration OTP sent successfully',
       };
     } catch (error) {
-      console.log(
-        '❌ START REGISTRATION ERROR',
-      );
-
-      console.log(error);
-
       throw error;
     }
   }
