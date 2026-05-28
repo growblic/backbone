@@ -3,6 +3,7 @@ import {
 } from '@nestjs/common';
 
 import { PrismaService } from '@infra/prisma/prisma.service';
+import { AppSource } from '@prisma/client';
 
 @Injectable()
 export class UserCreatorService {
@@ -46,7 +47,7 @@ export class UserCreatorService {
 
         country: 'IN',
 
-        source: 'LOGIN',
+        source: AppSource.FLUTTER_APP,
 
         // ===============================================
         // ✅ AUTO PROFILE CREATE
@@ -67,6 +68,8 @@ export class UserCreatorService {
             walletNumber,
 
             walletHandle,
+            availableBalance: 0,
+            lockedBalance: 0,
           },
         },
       },

@@ -6,8 +6,11 @@ import { UserRepository } from '../domain/repositories/user.repository';
 
 import { User } from '../domain/entities/user.entity';
 
+import { AppSource } from '@prisma/client';
+
 import { Role } from '../domain/enums/role.enum';
 
+import { UserRole } from '@prisma/client';
 @Injectable()
 export class UserPrismaRepository
   implements UserRepository
@@ -48,6 +51,17 @@ export class UserPrismaRepository
     return this.toEntity(user);
   }
 
+async findByEmail(
+  email: string,
+): Promise<User | null> {
+  return this.prisma.user.findUnique({
+    where: {
+      email,
+    },
+  });
+}
+
+
   // 🆕 create user
   async create(data: {
     phone: string;
@@ -65,9 +79,9 @@ export class UserPrismaRepository
 
           country: data.country,
 
-          source: data.source,
+          source: data.source as AppSource,
 
-          role: data.role,
+          role: UserRole.USER,
         },
       });
 
@@ -86,9 +100,9 @@ export class UserPrismaRepository
 
         country: user.country,
 
-        source: user.source,
+        source: user.source as AppSource,
 
-        role: user.role,
+        role: user.role as UserRole,
       },
     });
   }
@@ -100,11 +114,15 @@ export class UserPrismaRepository
 
       phone: user.phone,
 
+      email: user.email,
+
+      passwordHash: user.passwordHash,
+
       country: user.country,
 
-      source: user.source,
+      source: user.source as AppSource,
 
-      role: user.role,
+      role: user.role as UserRole,
 
       createdAt: user.createdAt,
 

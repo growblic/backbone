@@ -6,6 +6,8 @@ import {
 
 import Redis from 'ioredis';
 
+import { PrismaService } from '@infra/prisma/prisma.service';
+
 import crypto from 'crypto';
 
 type SessionData = {
@@ -37,6 +39,7 @@ export class SessionService {
   constructor(
     @Inject('REDIS_CLIENT')
     private readonly redis: Redis,
+    private readonly prisma: PrismaService,
   ) {}
 
   // =====================================================
@@ -53,99 +56,175 @@ export class SessionService {
   }
 
   // =====================================================
+  // 🔥 GET ALL SESSION KEYS (SCAN SAFE)
+  // =====================================================
+
+  private async getAllSessionKeys(): Promise<
+    string[]
+  > {
+    let cursor = '0';
+
+    const keys: string[] = [];
+
+    do {
+      const result =
+        await this.redis.scan(
+          cursor,
+
+          'MATCH',
+
+          'session:*',
+
+          'COUNT',
+
+          100,
+        );
+
+      cursor = result[0];
+
+      keys.push(...result[1]);
+    } while (cursor !== '0');
+
+    return keys;
+  }
+
+  // =====================================================
   // 🔥 CREATE SESSION
   // =====================================================
 
   async createSession(
-    userId: string,
+  userId: string,
 
-    refreshToken: string,
+  refreshToken: string,
 
-    metadata?: {
-      ipAddress?: string;
+  metadata?: {
+    ipAddress?: string;
 
-      userAgent?: string;
+    userAgent?: string;
 
-      deviceName?: string;
+    deviceName?: string;
 
-      fingerprint?: string;
-    },
-  ) {
-    const sessionId =
-      crypto.randomUUID();
+    fingerprint?: string;
+  },
+) {
+  const sessionId =
+    crypto.randomUUID();
 
-    const session: SessionData = {
-      id: sessionId,
+  const expiresAt = new Date(
+    Date.now() +
+      7 *
+        24 *
+        60 *
+        60 *
+        1000,
+  );
 
-      userId,
-
-      refreshTokenHash:
-        this.hashToken(
-          refreshToken,
-        ),
-
-      ipAddress:
-        metadata?.ipAddress ||
-        'unknown',
-
-      userAgent:
-        metadata?.userAgent ||
-        'unknown',
-
-      deviceName:
-        metadata?.deviceName ||
-        'unknown',
-
-      fingerprint:
-        metadata?.fingerprint ||
-        'unknown',
-
-      createdAt:
-        new Date().toISOString(),
-
-      expiresAt: new Date(
-        Date.now() +
-          7 *
-            24 *
-            60 *
-            60 *
-            1000,
-      ).toISOString(),
-    };
-
-    await this.redis.set(
-      `session:${sessionId}`,
-
-      JSON.stringify(session),
-
-      'EX',
-
-      60 * 60 * 24 * 7,
+  const refreshTokenHash =
+    this.hashToken(
+      refreshToken,
     );
 
-    return session;
-  }
+  // =====================================================
+  // ✅ SAVE IN DATABASE
+  // =====================================================
+
+  const session =
+    await this.prisma.session.create({
+      data: {
+        id: sessionId,
+
+        userId,
+
+        refreshTokenHash,
+
+        ipAddress:
+          metadata?.ipAddress ||
+          'unknown',
+
+        userAgent:
+          metadata?.userAgent ||
+          'unknown',
+
+        deviceName:
+          metadata?.deviceName ||
+          'unknown',
+
+        fingerprint:
+          metadata?.fingerprint ||
+          'unknown',
+
+        expiresAt,
+      },
+    });
+
+  // =====================================================
+  // ✅ CACHE IN REDIS
+  // =====================================================
+
+  await this.redis.set(
+    `session:${sessionId}`,
+
+    JSON.stringify(session),
+
+    'EX',
+
+    60 * 60 * 24 * 7,
+  );
+
+  return session;
+}
 
   // =====================================================
   // 🔥 GET SESSION
   // =====================================================
 
   async getSession(
-    sessionId: string,
-  ) {
-    const raw =
-      await this.redis.get(
-        `session:${sessionId}`,
-      );
+  sessionId: string,
+) {
+  // =====================================================
+  // ✅ TRY REDIS FIRST
+  // =====================================================
 
-    if (!raw) {
-      return null;
-    }
+  const cached =
+    await this.redis.get(
+      `session:${sessionId}`,
+    );
 
-    return JSON.parse(
-      raw,
-    ) as SessionData;
+  if (cached) {
+    return JSON.parse(cached);
   }
+
+  // =====================================================
+  // ✅ FALLBACK TO DATABASE
+  // =====================================================
+
+  const session =
+    await this.prisma.session.findUnique({
+      where: {
+        id: sessionId,
+      },
+    });
+
+  if (!session) {
+    return null;
+  }
+
+  // =====================================================
+  // ✅ RESTORE CACHE
+  // =====================================================
+
+  await this.redis.set(
+    `session:${sessionId}`,
+
+    JSON.stringify(session),
+
+    'EX',
+
+    60 * 60 * 24 * 7,
+  );
+
+  return session;
+}
 
   // =====================================================
   // 🔥 VALIDATE SESSION
@@ -214,117 +293,129 @@ export class SessionService {
   // 🔥 DELETE ONE SESSION
   // =====================================================
 
-  async deleteSession(
-    sessionId: string,
-  ) {
-    await this.redis.del(
+ async deleteSession(
+  sessionId: string,
+) {
+  await Promise.all([
+    this.redis.del(
       `session:${sessionId}`,
-    );
-  }
+    ),
+
+    this.prisma.session.update({
+      where: {
+        id: sessionId,
+      },
+
+      data: {
+        status: 'REVOKED',
+
+        revokedAt: new Date(),
+      },
+    }),
+  ]);
+}
 
   // =====================================================
   // 🔥 LOGOUT ALL DEVICES
   // =====================================================
 
   async deleteAllUserSessions(
-    userId: string,
-  ) {
-    const keys =
-      await this.redis.keys(
-        'session:*',
+  userId: string,
+) {
+  // =====================================================
+  // ✅ GET USER SESSIONS
+  // =====================================================
+
+  const sessions =
+    await this.prisma.session.findMany({
+      where: {
+        userId,
+
+        status: 'ACTIVE',
+      },
+
+      select: {
+        id: true,
+      },
+    });
+
+  // =====================================================
+  // ✅ DELETE REDIS CACHE
+  // =====================================================
+
+  if (sessions.length > 0) {
+    const pipeline =
+      this.redis.pipeline();
+
+    for (const session of sessions) {
+      pipeline.del(
+        `session:${session.id}`,
       );
-
-    for (const key of keys) {
-      const raw =
-        await this.redis.get(key);
-
-      if (!raw) {
-        continue;
-      }
-
-      const session =
-        JSON.parse(
-          raw,
-        ) as SessionData;
-
-      if (
-        session.userId ===
-        userId
-      ) {
-        await this.redis.del(key);
-      }
     }
+
+    await pipeline.exec();
   }
+
+  // =====================================================
+  // ✅ REVOKE DATABASE SESSIONS
+  // =====================================================
+
+  await this.prisma.session.updateMany({
+    where: {
+      userId,
+
+      status: 'ACTIVE',
+    },
+
+    data: {
+      status: 'REVOKED',
+
+      revokedAt: new Date(),
+    },
+  });
+}
 
   // =====================================================
   // 🔥 GET USER SESSIONS
   // =====================================================
 
   async getUserSessions(
-    userId: string,
-  ) {
-    const keys =
-      await this.redis.keys(
-        'session:*',
-      );
+  userId: string,
+) {
+  return this.prisma.session.findMany({
+    where: {
+      userId,
 
-    const sessions:
-      SessionData[] = [];
+      status: 'ACTIVE',
+    },
 
-    for (const key of keys) {
-      const raw =
-        await this.redis.get(key);
+    orderBy: {
+      createdAt: 'desc',
+    },
 
-      if (!raw) {
-        continue;
-      }
+    select: {
+      id: true,
 
-      const session =
-        JSON.parse(
-          raw,
-        ) as SessionData;
+      userId: true,
 
-      if (
-        session.userId ===
-        userId
-      ) {
-        sessions.push({
-          id: session.id,
+      ipAddress: true,
 
-          userId:
-            session.userId,
+      userAgent: true,
 
-          refreshTokenHash: '',
+      deviceName: true,
 
-          ipAddress:
-            session.ipAddress,
+      fingerprint: true,
 
-          userAgent:
-            session.userAgent,
+      createdAt: true,
 
-          deviceName:
-            session.deviceName,
+      expiresAt: true,
 
-          fingerprint:
-            session.fingerprint,
+      revokedAt: true,
 
-          createdAt:
-            session.createdAt,
-
-          expiresAt:
-            session.expiresAt,
-
-          revokedAt:
-            session.revokedAt,
-
-          lastUsedAt:
-            session.lastUsedAt,
-        });
-      }
-    }
-
-    return sessions;
-  }
+      lastUsedAt: true,
+    },
+  });
+}
 
   // =====================================================
   // 🔥 REQUIRE VALID SESSION

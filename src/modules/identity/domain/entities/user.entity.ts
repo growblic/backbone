@@ -5,6 +5,10 @@ export type User = {
 
   phone: string;
 
+  email: string | null;
+
+  passwordHash: string | null;
+
   country: string;
 
   source: string;

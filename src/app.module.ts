@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 
 import { APP_GUARD } from '@nestjs/core';
+import { BackofficeModule } from '@modules/backoffice/backoffice.module';
 
 import { ConfigModule } from '@nestjs/config';
 
@@ -150,6 +151,8 @@ import { PermissionsGuard } from '@common/guards/authorization/permissions.guard
     TaskSubmissionsModule,
 
     AdRewardsModule,
+
+    BackofficeModule,
   ],
 
   controllers: [AppController],

@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
 
 import { UserRepository } from '@modules/identity/domain/repositories/user.repository';
@@ -82,7 +83,7 @@ export class VerifyLoginUseCase {
     // =====================================================
 
     if (!user) {
-      throw new Error(
+      throw new UnauthorizedException(
         'User creation failed',
       );
     }
@@ -146,6 +147,8 @@ const session =
           sub: user.id,
 
           sessionId: session.id,
+
+          tokenVersion: 1,
         },
       );
 

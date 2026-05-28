@@ -35,6 +35,9 @@ export class WalletPrismaRepository
 
         walletHandle:
           data.walletHandle,
+
+        availableBalance: 0,
+        lockedBalance: 0,
       },
     });
   }
@@ -242,8 +245,8 @@ export class WalletPrismaRepository
         }
 
         if (
-          sender.availableBalance <
-          data.amount
+          sender.availableBalance.toNumber()
+          < data.amount
         ) {
           throw new Error(
             'Insufficient balance',
@@ -850,7 +853,7 @@ export class WalletPrismaRepository
       );
 
     return (
-      result._sum.amount || 0
+      result._sum.amount?.toNumber() || 0
     );
   }
 
@@ -888,7 +891,7 @@ export class WalletPrismaRepository
       );
 
     return (
-      result._sum.amount || 0
+      result._sum.amount?.toNumber() || 0
     );
   }
 }

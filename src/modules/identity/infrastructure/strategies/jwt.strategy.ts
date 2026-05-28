@@ -10,15 +10,23 @@ import {
   Strategy,
 } from 'passport-jwt';
 
+import { ConfigService } from '@nestjs/config';
+
+import { Role } from '../../domain/enums/role.enum';
+
 import { PrismaService } from '@infra/prisma/prisma.service';
+
+import { AuthenticatedUser } from '../../domain/interfaces/authenticated-user.interface';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(
   Strategy,
 ) {
   constructor(
-    private readonly prisma:
-      PrismaService,
+    private readonly prisma: PrismaService,
+
+    private readonly configService:
+      ConfigService,
   ) {
     super({
       jwtFromRequest:
@@ -27,7 +35,9 @@ export class JwtStrategy extends PassportStrategy(
       ignoreExpiration: false,
 
       secretOrKey:
-        process.env.JWT_ACCESS_SECRET as string,
+        configService.get<string>(
+          'JWT_ACCESS_SECRET',
+        )!,
     });
   }
 
@@ -35,11 +45,9 @@ export class JwtStrategy extends PassportStrategy(
     sub: string;
 
     role: string;
-  }) {
-    // =====================================================
-    // ✅ FIND USER
-    // =====================================================
 
+    sessionId?: string;
+  }): Promise<AuthenticatedUser> {
     const user =
       await this.prisma.user.findUnique({
         where: {
@@ -57,13 +65,11 @@ export class JwtStrategy extends PassportStrategy(
 
           source: true,
 
-        
+          isBlocked: true,
+
+          isActive: true,
         },
       });
-
-    // =====================================================
-    // ❌ USER NOT FOUND
-    // =====================================================
 
     if (!user) {
       throw new UnauthorizedException(
@@ -71,24 +77,28 @@ export class JwtStrategy extends PassportStrategy(
       );
     }
 
-  
+    if (user.isBlocked) {
+      throw new UnauthorizedException(
+        'Account blocked',
+      );
+    }
 
-    // =====================================================
-    // ✅ ATTACH TO request.user
-    // =====================================================
+    if (!user.isActive) {
+      throw new UnauthorizedException(
+        'Account inactive',
+      );
+    }
 
     return {
       id: user.id,
 
       phone: user.phone,
 
-      role: user.role,
+      role: user.role as Role,
 
       country: user.country,
 
       source: user.source,
-
-    
     };
   }
 }

@@ -1,27 +1,48 @@
 import { User } from '../entities/user.entity';
 
 export interface UserRepository {
-  // 🔍 find by phone
+  // ======================================================
+  // FIND USER
+  // ======================================================
+
+  // Find by phone number
   findByPhone(
     phone: string,
   ): Promise<User | null>;
 
-  // 🔍 find by id
+  // Find by email (Admin Login)
+  findByEmail(
+    email: string,
+  ): Promise<User | null>;
+
+  // Find by id
   findById(
     id: string,
   ): Promise<User | null>;
 
-  // 🆕 create user
+  // ======================================================
+  // CREATE USER
+  // ======================================================
+
   create(data: {
-    phone: string;
+    // User Auth
+    phone?: string;
+    email?: string;
 
-    country: string;
+    // Admin Password Login
+    passwordHash?: string;
 
-    source: string;
+    // Metadata
+    country?: string;
+    source?: string;
 
+    // RBAC
     role: string;
   }): Promise<User>;
 
-  // 💾 save user
+  // ======================================================
+  // UPDATE USER
+  // ======================================================
+
   save(user: User): Promise<void>;
 }

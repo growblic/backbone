@@ -1,65 +1,42 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, AdminRole } from '@prisma/client';
+
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  // =====================================================
-  // ✅ CHECK EXISTING ADMIN
-  // =====================================================
+async function bootstrap() {
+  const email = 'admin@growblic.com';
 
-  const existingAdmin =
-    await prisma.user.findFirst({
-      where: {
-        role: 'SUPER_ADMIN',
-      },
-    });
+  const existingAdmin = await prisma.adminUser.findUnique({
+    where: {
+      email,
+    },
+  });
 
   if (existingAdmin) {
-
+    console.log('Super admin already exists');
     return;
   }
 
-  // =====================================================
-  // 👑 CREATE SUPER ADMIN
-  // =====================================================
+  const passwordHash = await bcrypt.hash('Admin@123', 10);
 
-  const admin =
-    await prisma.user.create({
-      data: {
-        phone: '+919999999998',
+  await prisma.adminUser.create({
+    data: {
+      email,
+      passwordHash,
+      fullName: 'Super Admin',
+      role: AdminRole.SUPER_ADMIN,
+    },
+  });
 
-        role: 'SUPER_ADMIN',
-
-        country: 'IN',
-
-        source: 'SYSTEM',
-
-        profile: {
-          create: {},
-        },
-
-        wallet: {
-          create: {
-            walletNumber:
-              'ADMIN0001',
-
-            walletHandle:
-              'superadmin',
-          },
-        },
-      },
-    });
-
-
+  console.log('Super admin created successfully');
 }
 
-main()
+bootstrap()
   .catch((error) => {
     console.error(error);
-
     process.exit(1);
   })
-
   .finally(async () => {
     await prisma.$disconnect();
   });

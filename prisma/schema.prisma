@@ -1,6 +1,6 @@
-// =======================
-// DATABASE CONFIG
-// =======================
+// ======================================================
+// DATABASE
+// ======================================================
 
 datasource db {
   provider = "postgresql"
@@ -11,9 +11,28 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// =======================
+// ======================================================
 // ENUMS
-// =======================
+// ======================================================
+
+enum UserRole {
+  USER
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  OPERATIONS_ADMIN
+  SUPPORT_ADMIN
+  FINANCE_ADMIN
+  KYC_ADMIN
+  MODERATOR
+}
+
+enum SessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
 
 enum TaskStatus {
   DRAFT
@@ -92,22 +111,41 @@ enum WithdrawalStatus {
   FAILED
 }
 
-// =======================
+enum AppSource {
+  FLUTTER_APP
+  ANDROID
+  IOS
+  WEB
+}
+
+// ======================================================
 // USER
-// =======================
+// ======================================================
 
 model User {
   id String @id @default(uuid())
 
   phone String @unique
 
-  source String
+  email String? @unique
+
+  passwordHash String?
+
+  source AppSource
 
   country String
 
   appId String?
 
-  role String @default("USER")
+  role UserRole @default(USER)
+
+  isActive Boolean @default(true)
+
+  isBlocked Boolean @default(false)
+
+  deletedAt DateTime?
+
+  lastLoginAt DateTime?
 
   createdAt DateTime @default(now())
 
@@ -118,21 +156,218 @@ model User {
 
   wallet Wallet?
 
-  kyc             Kyc?
+  kyc Kyc?
+
+  sessions Session[]
+
   taskSubmissions TaskSubmission[]
-  adRewardClaims  AdRewardClaim[]
+
+  adRewardClaims AdRewardClaim[]
+
+  @@index([phone])
+
+  @@index([email])
+
+  @@index([createdAt])
 }
 
-// =======================
+// ======================================================
+// ADMIN USER
+// ======================================================
+
+model AdminUser {
+  id String @id @default(uuid())
+
+  email String @unique
+
+  passwordHash String
+
+  fullName String
+
+  role AdminRole @default(OPERATIONS_ADMIN)
+
+  isActive Boolean @default(true)
+
+  isBlocked Boolean @default(false)
+
+  lastLoginAt DateTime?
+
+  createdBy String?
+
+  updatedBy String?
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // RELATIONS
+  sessions AdminSession[]
+
+  permissions AdminRolePermission[]
+
+  auditLogs AdminAuditLog[]
+
+  @@index([email])
+
+  @@index([role])
+}
+
+// ======================================================
+// ADMIN SESSION
+// ======================================================
+
+model AdminSession {
+  id String @id @default(uuid())
+
+  adminUserId String
+
+  refreshTokenHash String
+
+  ipAddress String?
+
+  userAgent String?
+
+  deviceName String?
+
+  lastUsedAt DateTime?
+
+  isRevoked Boolean @default(false)
+
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  // RELATIONS
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+
+  @@map("admin_sessions")
+}
+
+// ======================================================
+// ADMIN PERMISSIONS
+// ======================================================
+
+model AdminPermission {
+  id String @id @default(uuid())
+
+  key String @unique
+
+  description String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  roles AdminRolePermission[]
+
+  @@index([key])
+}
+
+model AdminRolePermission {
+  id String @id @default(uuid())
+
+  adminUserId String
+
+  permissionId String
+
+  createdAt DateTime @default(now())
+
+  // RELATIONS
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  permission AdminPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([adminUserId, permissionId])
+
+  @@index([adminUserId])
+
+  @@index([permissionId])
+}
+
+// ======================================================
+// ADMIN AUDIT LOG
+// ======================================================
+
+model AdminAuditLog {
+  id String @id @default(uuid())
+
+  adminUserId String
+
+  action String
+
+  entity String
+
+  entityId String?
+
+  metadata Json?
+
+  ipAddress String?
+
+  createdAt DateTime @default(now())
+
+  // RELATIONS
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+
+  @@index([entity])
+
+  @@index([createdAt])
+}
+
+// ======================================================
+// USER SESSION
+// ======================================================
+
+model Session {
+  id String @id @default(uuid())
+
+  userId String
+
+  refreshTokenHash String
+
+  ipAddress String?
+
+  userAgent String?
+
+  deviceName String?
+
+  fingerprint String?
+
+  status SessionStatus @default(ACTIVE)
+
+  expiresAt DateTime
+
+  lastUsedAt DateTime?
+
+  revokedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // RELATIONS
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+
+  @@index([status])
+
+  @@index([expiresAt])
+}
+
+// ======================================================
 // PROFILE
-// =======================
+// ======================================================
 
 model Profile {
   id String @id @default(uuid())
 
   userId String @unique
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   username String? @unique
 
@@ -160,27 +395,30 @@ model Profile {
 
   updatedAt DateTime @updatedAt
 
+  // RELATIONS
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
+
+  @@index([username])
 }
 
-// =======================
+// ======================================================
 // WALLET
-// =======================
+// ======================================================
 
 model Wallet {
   id String @id @default(uuid())
 
   userId String @unique
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
   walletNumber String @unique
 
   walletHandle String @unique
 
-  availableBalance Int @default(0)
+  availableBalance Decimal @db.Decimal(18, 2)
 
-  lockedBalance Int @default(0)
+  lockedBalance Decimal @db.Decimal(18, 2)
 
   currency Currency @default(INR)
 
@@ -191,6 +429,8 @@ model Wallet {
   updatedAt DateTime @updatedAt
 
   // RELATIONS
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   sentTransactions WalletTransaction[] @relation("SenderWallet")
 
   receivedTransactions WalletTransaction[] @relation("ReceiverWallet")
@@ -200,13 +440,15 @@ model Wallet {
   withdrawals Withdrawal[]
 
   @@index([userId])
+
   @@index([walletHandle])
+
   @@index([walletNumber])
 }
 
-// =======================
+// ======================================================
 // WALLET TRANSACTION
-// =======================
+// ======================================================
 
 model WalletTransaction {
   id String @id @default(uuid())
@@ -219,7 +461,7 @@ model WalletTransaction {
 
   receiverWalletId String?
 
-  amount Int
+  amount Decimal @db.Decimal(18, 2)
 
   type WalletTransactionType
 
@@ -231,6 +473,7 @@ model WalletTransaction {
 
   updatedAt DateTime @updatedAt
 
+  // RELATIONS
   senderWallet Wallet? @relation("SenderWallet", fields: [senderWalletId], references: [id])
 
   receiverWallet Wallet? @relation("ReceiverWallet", fields: [receiverWalletId], references: [id])
@@ -238,14 +481,17 @@ model WalletTransaction {
   ledgerEntries LedgerEntry[]
 
   @@index([senderWalletId])
+
   @@index([receiverWalletId])
+
   @@index([referenceId])
+
   @@index([status])
 }
 
-// =======================
+// ======================================================
 // LEDGER ENTRY
-// =======================
+// ======================================================
 
 model LedgerEntry {
   id String @id @default(uuid())
@@ -256,30 +502,32 @@ model LedgerEntry {
 
   type LedgerEntryType
 
-  amount Int
+  amount Decimal @db.Decimal(18, 2)
 
-  balanceAfter Int
+  balanceAfter Decimal @db.Decimal(18, 2)
 
   createdAt DateTime @default(now())
 
+  // RELATIONS
   wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   transaction WalletTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   @@index([walletId])
+
   @@index([transactionId])
 }
 
-// =======================
+// ======================================================
 // WITHDRAWAL
-// =======================
+// ======================================================
 
 model Withdrawal {
   id String @id @default(uuid())
 
   walletId String
 
-  amount Int
+  amount Decimal @db.Decimal(18, 2)
 
   bankName String?
 
@@ -299,11 +547,17 @@ model Withdrawal {
 
   updatedAt DateTime @updatedAt
 
+  // RELATIONS
   wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   @@index([walletId])
+
   @@index([status])
 }
+
+// ======================================================
+// TASK
+// ======================================================
 
 model Task {
   id String @id @default(uuid())
@@ -318,9 +572,9 @@ model Task {
 
   type TaskType
 
-  rewardAmount Int
+  rewardAmount Decimal @db.Decimal(18, 2)
 
-  currency String @default("INR")
+  currency Currency @default(INR)
 
   status TaskStatus @default(DRAFT)
 
@@ -344,12 +598,23 @@ model Task {
 
   updatedBy String?
 
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
 
+  // RELATIONS
   submissions TaskSubmission[]
+
+  @@index([status])
+
+  @@index([slug])
 }
+
+// ======================================================
+// TASK SUBMISSION
+// ======================================================
 
 model TaskSubmission {
   id String @id @default(uuid())
@@ -364,6 +629,8 @@ model TaskSubmission {
 
   adminRemark String?
 
+  reviewedByAdminId String?
+
   reviewedBy String?
 
   reviewedAt DateTime?
@@ -374,12 +641,21 @@ model TaskSubmission {
 
   updatedAt DateTime @updatedAt
 
+  // RELATIONS
   task Task @relation(fields: [taskId], references: [id])
 
   user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, taskId])
+
+  @@index([status])
+
+  @@index([taskId])
 }
+
+// ======================================================
+// AD REWARD CAMPAIGN
+// ======================================================
 
 model AdRewardCampaign {
   id String @id @default(uuid())
@@ -388,7 +664,7 @@ model AdRewardCampaign {
 
   description String?
 
-  rewardAmount Int
+  rewardAmount Decimal @db.Decimal(18, 2)
 
   dailyLimit Int @default(10)
 
@@ -404,10 +680,15 @@ model AdRewardCampaign {
 
   updatedAt DateTime @updatedAt
 
+  // RELATIONS
   claims AdRewardClaim[]
 
   @@index([isActive])
 }
+
+// ======================================================
+// AD REWARD CLAIM
+// ======================================================
 
 model AdRewardClaim {
   id String @id @default(uuid())
@@ -416,7 +697,7 @@ model AdRewardClaim {
 
   campaignId String
 
-  rewardAmount Int
+  rewardAmount Decimal @db.Decimal(18, 2)
 
   status AdRewardStatus @default(SUCCESS)
 
@@ -424,28 +705,30 @@ model AdRewardClaim {
 
   transactionId String?
 
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // RELATIONS
   campaign AdRewardCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
   @@index([userId])
+
   @@index([campaignId])
+
   @@index([claimedAt])
 }
 
-// =======================
+// ======================================================
 // KYC
-// =======================
+// ======================================================
 
 model Kyc {
   id String @id @default(uuid())
 
   userId String @unique
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   status KycStatus @default(PENDING)
 
@@ -459,5 +742,10 @@ model Kyc {
 
   updatedAt DateTime @updatedAt
 
+  // RELATIONS
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
+
+  @@index([status])
 }

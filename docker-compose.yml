@@ -7,14 +7,14 @@ services:
   postgres-db:
     image: postgres:18-alpine
 
-    container_name: growblic-postgres
+    container_name: postgres-db
 
     restart: always
 
     environment:
-      POSTGRES_USER: postgres
+      POSTGRES_USER: backbone
       POSTGRES_PASSWORD: growblic-password
-      POSTGRES_DB: growblic-db
+      POSTGRES_DB: backbone_production
 
     ports:
       - "5432:5432"
@@ -26,7 +26,7 @@ services:
       - growblic-network
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U backbone -d backbone_production"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -40,7 +40,7 @@ services:
   redis:
     image: redis:8-alpine
 
-    container_name: growblic-redis
+    container_name: redis-cache
 
     restart: always
 
@@ -85,6 +85,7 @@ services:
 
     env_file:
       - .env
+      - .env.docker
 
     ports:
       - "3000:3000"

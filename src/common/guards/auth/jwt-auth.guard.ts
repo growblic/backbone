@@ -42,7 +42,7 @@ export class JwtAuthGuard extends AuthGuard(
     if (isPublic) {
       return true;
     }
-
+ 
     return super.canActivate(
       context,
     );

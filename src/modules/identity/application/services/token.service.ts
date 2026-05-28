@@ -41,6 +41,8 @@ export class TokenService {
     sub: string;
 
     sessionId: string;
+
+    tokenVersion?: number;
   }): string {
     return this.jwtService.sign(payload, {
       secret:

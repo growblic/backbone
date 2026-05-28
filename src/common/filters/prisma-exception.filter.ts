@@ -95,8 +95,11 @@ export class PrismaExceptionFilter
         statusCode =
           HttpStatus.INTERNAL_SERVER_ERROR;
 
-        message =
-          'Internal database error';
+
+          console.error(exception);
+          console.error(exception.meta);
+           message = 
+           'internal database error';
     }
 
     // =====================================================
